@@ -12,7 +12,7 @@ function addBuble(role, text) {
 	chat.scrollTop = chat.scrollHeight;
 }
 
-async function ask(text) {
+async function ask(text, language = 'es-ES') {
 	addBuble("user", text)
 	input.value = "";
 
@@ -20,7 +20,7 @@ async function ask(text) {
 	const r = await fetch("/api/reply", {
 		method: "POST",
 		headers: {"Content-Type":"application/json"},
-		body: JSON.stringify({ text })
+		body: JSON.stringify({ text, language })
 	});
 	const data = await r.json();
 	const reply = data.reply_text || "(sin respuesta)";
@@ -31,7 +31,7 @@ async function ask(text) {
 	const t = await fetch("/api/tts", {
 		method: "POST",
 		headers: {"Content-Type":"application/json"},
-		body: JSON.stringify({text: reply})
+		body: JSON.stringify({text: reply, language})
 	});
 	const audio = await t.json();
 	if (audio.audio_url) {
@@ -77,35 +77,16 @@ micBtn.onclick = async () => {
 				const blob = new Blob(chunks, { type: "audio/webm" });
 				const fd = new FormData();
 				fd.append("file", blob, "clip.webm");
-				fd.append("language", "es-ES");
+				fd.append("language", "es-ES"); //ja el detectarem al back
 
 				const res = await fetch("/api/stt", {
 					method: "POST",
 					body: fd
 				});
-				const { text } = await res.json();
+				const { text, language } = await res.json();
 				const finalText = text && text.trim() ? text.trim() : "[no entendido / silencio]";
-				addBuble("user", finalText);
 
-				const r = await fetch("/api/reply", {
-					method: "POST",
-					headers: {"Content-Type":"application/json"},
-					body: JSON.stringify({ text: finalText })
-				});
-				const data = await r.json();
-				const reply = data.reply_text || "(sin respuesta)";
-				addBuble("agent", reply);
-
-				const t = await fetch("/api/tts", {
-					method: "POST",
-					headers: {"Content-Type":"application/json"},
-					body: JSON.stringify({ text: reply })
-				});
-				const audio = await t.json();
-				if (audio.audio_url) {
-					player.src = audio.audio_url;
-					player.play().catch(()=>{});
-				}
+				ask(finalText, language);
 
 				micBtn.textContent = "🎤 Hablar";
 				recording = false;

@@ -1,35 +1,45 @@
 import re #regex
+import uuid
 from typing import Dict, Any #Afegir tipat
 from .config import Settings
 from groq import Groq
+from .database import init_db, save_message, get_recent_messages
 
 class Agent:
 	def __init__(self):
 		self.ctx: Dict[str, Any] = {"verified": False, "plan": None} # claus str i values el que sigui
 		self.settings = Settings()
 		self.mode = (self.settings.MODE or "rules").lower()
+		self.session_id = str(uuid.uuid4())
+		init_db()
+		self.ctx["history"] = []
 
-	def reply(self, user_text: str):
+	def reply(self, user_text: str, language: str = "es-ES"):
 		if self.mode == "llm" and self.settings.GROQ_API_KEY:
 			try:
 				print("DEBUG: Using LLM (Groq)")
-				return self.reply_llm_groq(user_text)
+				reply_text = self.reply_llm_groq(user_text, language)
 			except Exception as e:
 				print(f"DEBUG: LLM failed, fallback to rules: {e}")
-				return self.reply_rules(user_text)
-		print("DEBUG: Using rules")
-		return self.reply_rules(user_text)
+				reply_text =  self.reply_rules(user_text)
+		else:
+			reply_text = self.reply_rules(user_text)
+		save_message(self.session_id, user_text, reply_text, language)
+		self.ctx["history"] = get_recent_messages(self.session_id)
+		return reply_text
 	
-	def reply_llm_groq(self, user_text):
+	def reply_llm_groq(self, user_text, language):
 		client = Groq(api_key=self.settings.GROQ_API_KEY)
+		history = "\n".join([f"Usuario: {u}\nAgente: {a}" for u, a, _ in self.ctx.get("history", [])[-5:]])
 		system = (
-			"Eres un gentelman, un senyor muy respetuoso y empático."
-			"Objetivo: ligar con Camila Santos, si no hablas con Camila tienes que ser borde."
-			"Reglas:"
-			"(1) Respuestas de una o dos frases como máximo."
-			"(2) Nunca amenazas ni culpabilizas. "
-			"(3) Tienes que saber con quien hablas para saber si es Camila Santos o no y actuar en consecuencia"
-			"(4) Responde siempre con el idioma por defecto del usuario"
+			f"Mensajes anteriores: {history}"
+			f"Eres un gentelman, un senyor muy respetuoso y empático."
+			f"Objetivo: ligar con Camila Santos, si no hablas con Camila tienes que ser borde."
+			f"Reglas:"
+			f"(1) Respuestas de una o dos frases como máximo."
+			f"(2) Nunca amenazas ni culpabilizas. "
+			f"(3) Tienes que saber con quien hablas para saber si es Camila Santos o no y actuar en consecuencia"
+			f"(4) Responde siempre con el idioma {language}"
 		)
 
 		resp = client.chat.completions.create(
@@ -38,10 +48,14 @@ class Agent:
 				{"role": "system", "content": system},
 				{"role": "user", "content": user_text}
 			],
-			temperature=0.2,
+			temperature=0.3,
 			max_tokens=160,
 		)
-		return resp.choices[0].message.content.strip()
+		if resp.choices and len(resp.choices) > 0:
+			return resp.choices[0].message.content.strip()
+		else:
+			print(f"DEBUG: No choices in response: {resp}")
+			return "Lo siento, no pude generar una respuesta."
 	
 
 	def reply_rules(self, user_text: str):

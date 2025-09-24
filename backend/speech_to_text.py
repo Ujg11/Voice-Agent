@@ -2,6 +2,9 @@ import tempfile # crear directoris i fitxers temporals
 import subprocess
 from pathlib import Path
 from typing import Optional
+from langdetect import detect
+import speech_recognition as sr
+
 
 # Reb bytes i els posa en un fitxer temporal
 def _bytes_to_tempfile(data: bytes, suffix: str) -> Path:
@@ -45,14 +48,17 @@ def transcribe_bytes(data: bytes, content_type: Optional[str], language: str = "
 	src = _bytes_to_tempfile(data, suffix=suffix)
 	wav_path = src if src.suffix == ".wav" else _convert_to_wav(src)
 	try:
-		import speech_recognition as sr
 		r = sr.Recognizer()
 		with sr.AudioFile(str(wav_path)) as source:
 			audio = r.record(source)
 		text = r.recognize_google(audio, language=language) # STT amb google
-		return text.strip()
+		text = text.strip()
+		text, detected_lang = detect_language(text, audio, language)#text pot canviar si l'idioma estava malament
+
+		return text, detected_lang
+
 	except Exception:
-		return ""
+		return "", 'es-ES'
 	finally:
 		try:
 			src.unlink(missing_ok=True)
@@ -65,5 +71,28 @@ def transcribe_bytes(data: bytes, content_type: Optional[str], language: str = "
 				pass
 
 		
+def detect_language(text, audio, lang_default):
+	lang_map = {
+		'es': 'es-ES',
+		'en': 'en-US', 
+		'fr': 'fr-FR',
+		'de': 'de-DE',
+		'it': 'it-IT',
+		'pt': 'pt-BR'
+	}
 
+	try:
+		detected_lang = detect(text)
+		detected_lang = lang_map.get(detected_lang, 'es-ES')# default es-ES
 
+		if detected_lang != lang_default and detected_lang in lang_map.values():
+			try:
+				r = sr.Recognizer()
+				text = r.recognize_google(audio, language=detected_lang)
+				text = text.strip()
+			except:
+				detected_lang = lang_default
+	except:
+		detected_lang = 'es-ES'
+
+	return text, detected_lang

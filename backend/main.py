@@ -28,20 +28,22 @@ def index():
 @app.post("/api/tts")
 async def api_tts(payload: dict):
 	text = (payload or {}).get("text", "").strip()
+	language = (payload or {}).get("language", "es-ES")
 	if not text:
 		return JSONResponse({"error": "missing text"}, status_code=400)
-	url = tts_to_file(text)
+	url = tts_to_file(text, language)
 	return JSONResponse({"audio_url": url})
 
 @app.post("/api/reply")
 async def api_reply(payload: dict):
 	user_text = (payload or "").get("text", "").strip()
-	reply_text = agent.reply(user_text)
+	language = (payload or {}).get("language", "es-ES")
+	reply_text = agent.reply(user_text, language)
 	return JSONResponse({"reply_text": reply_text})
 
 @app.post("/api/stt")
 async def api_stt(file: UploadFile = File(...), language: str = Form("es-ES")):
 	data = await file.read()
-	text = transcribe_bytes(data, content_type=file.content_type, language=language)
-	return JSONResponse({"text": text})
+	text, language = transcribe_bytes(data, content_type=file.content_type, language=language)
+	return JSONResponse({"text": text, "language": language})
 

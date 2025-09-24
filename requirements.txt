@@ -9,6 +9,7 @@ SpeechRecognition
 pydub
 openai>=1.0.0
 groq
+langdetect
 
 # sudo apt-get install -y ffmpeg -> webm a wav
 
