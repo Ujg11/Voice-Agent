@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="es">
+<head>
+	<meta charset="utf-8" />
+	<title>Voice Agent :p</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#0b0f14; color:#e6edf3; margin:0; }
+		.container { max-width: 900px; margin: 40px auto; padding: 0 16px; }
+		h1 { margin: 0 0 16px; font-size: 24px; }
+		.chat { background:#111926; border:1px solid #1f2937; border-radius:12px; padding:16px; height:50vh; overflow:auto; }
+		.bubble { padding:10px 12px; margin:8px 0; border-radius:10px; max-width:70%; line-height:1.3; }
+		.user { background:#1f2937; margin-left:auto; }
+		.agent { background:#0ea5e9; color:#06202a; margin-right:auto; }
+		.controls { display:flex; gap:8px; margin:12px 0; }
+		input[type="text"] { flex:1; padding:10px; border-radius:10px; border:1px solid #334155; background:#0b1220; color:#e6edf3; }
+		button { padding:10px 14px; border:1px solid #334155; background:#0b1220; color:#e6edf3; border-radius:10px; cursor:pointer; }
+		button:hover { background:#111926; }
+		audio { width:100%; margin-top:8px; }
+	</style>
+</head>
+<body>
+	<main class="container">
+    <h1>🎙️ Voice Agent :p</h1>
+    <div id="chat" class="chat"></div>
+
+    <div class="controls">
+      <input id="textInput" type="text" placeholder="Escribe o usa el micrófono..." />
+      <button id="sendBtn">Enviar</button>
+      <button id="micBtn">🎤 Hablar</button>
+    </div>
+
+    <audio id="player" controls></audio>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

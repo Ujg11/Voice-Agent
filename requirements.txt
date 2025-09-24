@@ -1,0 +1,20 @@
+fastapi #servidor web lleuger (ENDPOINTS)
+uvicorn #ASGI server per llançar FastAPI
+python-dotenv #carregar .env
+pydantic #gestió de la configuració
+pydantic-settings 
+requests #crides HTTP Rest
+elevenlabs #SDK per TTS (Text-to-speech)
+SpeechRecognition
+pydub
+openai>=1.0.0
+groq
+
+# sudo apt-get install -y ffmpeg -> webm a wav
+
+
+# Ollama:
+# ollama pull llama3.1:8b     # model general bo
+# opcions més lleugeres (més ràpides en CPU):
+# ollama pull phi3:mini
+# ollama pull qwen2.5:7b-instruct
