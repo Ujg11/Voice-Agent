@@ -36,9 +36,10 @@ async def api_tts(payload: dict):
 
 @app.post("/api/reply")
 async def api_reply(payload: dict):
-	user_text = (payload or "").get("text", "").strip()
+	user_text = (payload or {}).get("text", "").strip()
 	language = (payload or {}).get("language", "es-ES")
-	reply_text = agent.reply(user_text, language)
+	role_id = "collections_en" if language.startswith("en") else "collections_es"
+	reply_text = agent.reply(user_text, language, role_id)
 	return JSONResponse({"reply_text": reply_text})
 
 @app.post("/api/stt")

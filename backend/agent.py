@@ -4,6 +4,7 @@ from typing import Dict, Any #Afegir tipat
 from .config import Settings
 from groq import Groq
 from .database import init_db, save_message, get_recent_messages
+from .roles import ROLES
 
 class Agent:
 	def __init__(self):
@@ -14,47 +15,46 @@ class Agent:
 		init_db()
 		self.ctx["history"] = []
 
-	def reply(self, user_text: str, language: str = "es-ES"):
+	def reply(self, user_text: str, language: str = "es-ES", role_id: str = "collections_es"):
 		if self.mode == "llm" and self.settings.GROQ_API_KEY:
 			try:
 				print("DEBUG: Using LLM (Groq)")
-				reply_text = self.reply_llm_groq(user_text, language)
+				reply_text = self.reply_llm_groq(user_text, language, role_id)
 			except Exception as e:
 				print(f"DEBUG: LLM failed, fallback to rules: {e}")
 				reply_text =  self.reply_rules(user_text)
 		else:
 			reply_text = self.reply_rules(user_text)
 		save_message(self.session_id, user_text, reply_text, language)
-		self.ctx["history"] = get_recent_messages(self.session_id)
+		self.ctx["history"] = get_recent_messages(self.session_id) # fem update al historial
 		return reply_text
 	
-	def reply_llm_groq(self, user_text, language):
+
+	def reply_llm_groq(self, user_text, language, role_id):
 		client = Groq(api_key=self.settings.GROQ_API_KEY)
-		history = "\n".join([f"Usuario: {u}\nAgente: {a}" for u, a, _ in self.ctx.get("history", [])[-5:]])
-		system = (
-			f"Mensajes anteriores: {history}"
-			f"Eres un gentelman, un senyor muy respetuoso y empático."
-			f"Objetivo: ligar con Camila Santos, si no hablas con Camila tienes que ser borde."
-			f"Reglas:"
-			f"(1) Respuestas de una o dos frases como máximo."
-			f"(2) Nunca amenazas ni culpabilizas. "
-			f"(3) Tienes que saber con quien hablas para saber si es Camila Santos o no y actuar en consecuencia"
-			f"(4) Responde siempre con el idioma {language}"
-		)
+		role = ROLES.get(role_id) or ROLES["collections_es"]
+		system = role["system"]
+		messages = [{"role": "system", "content": system}]
+
+		for m in role.get("fewshots", []):
+			messages.append(m)
+
+		for u, a, _lang in self.ctx.get("history", [])[-5:]:
+			if u:
+				messages.append({"role":"user", "content":u})
+			if a:
+				messages.append({"role":"assistant","content":a})
+		messages.append({"role":"user", "content":user_text})
 
 		resp = client.chat.completions.create(
 			model=self.settings.GROQ_MODEL,
-			messages=[
-				{"role": "system", "content": system},
-				{"role": "user", "content": user_text}
-			],
+			messages=messages,
 			temperature=0.3,
 			max_tokens=160,
 		)
 		if resp.choices and len(resp.choices) > 0:
 			return resp.choices[0].message.content.strip()
 		else:
-			print(f"DEBUG: No choices in response: {resp}")
 			return "Lo siento, no pude generar una respuesta."
 	
 
